@@ -49,6 +49,7 @@ public class GUIFrame extends JFrame {
             finishedProducts.add(producedLabel.get(value.name));
             finishedProducts.add(new JLabel("/", SwingConstants.CENTER));
             finishedProducts.add(orderedLabel.get(value.name));
+            finishedProducts.add(new JLabel(" ", SwingConstants.CENTER));
         });
 
         add(finishedProducts);

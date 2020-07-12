@@ -110,7 +110,7 @@
           "productName": "hooded",
           "stageId": 4,
           "actionName": "add printing",
-          "productionTime": 3000
+          "productionTime": 5000
         }
       ]
     },
@@ -120,8 +120,8 @@
       "actions": [
         {
           "productName": "hooded",
-          "stageId": 4,
-          "actionName": "add printing",
+          "stageId": 3,
+          "actionName": "add hood",
           "productionTime": 3000
         }
       ]
