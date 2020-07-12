@@ -3,10 +3,7 @@ package industry;
 import com.google.gson.Gson;
 import jade.core.AID;
 import jade.core.Agent;
-import jade.core.behaviours.Behaviour;
-import jade.core.behaviours.OneShotBehaviour;
-import jade.core.behaviours.SimpleBehaviour;
-import jade.core.behaviours.TickerBehaviour;
+import jade.core.behaviours.*;
 import jade.lang.acl.ACLMessage;
 import jade.lang.acl.MessageTemplate;
 import jade.wrapper.AgentController;
@@ -425,11 +422,9 @@ public class MachineAgent extends Agent {
                     offersIdx.put(keys[j], 0);
                     List<PlanElement> refPlanList = PlanMap.get(productId).get(keys[j]);
                     for (int i = 0; i < refPlanList.size(); i++) {
-                        int delay = 0;
-                        int socketId = refPlanList.get(i)._messageContent.getSocketId();
-                        if (socketId != machine.socketId && socketId != -1)
-                            delay += InformationCenter.getInstance().socketDelay;
-                        if (refPlanList.get(i)._productionEnd + delay < offersTimes.get(keys[j])) {
+                        String requesting = refPlanList.get(i)._requestingAgent.getLocalName();
+                        int delay = GetSocketDelay(requesting);
+                        if (refPlanList.get(i)._productionEnd + delay < offersTimes.get(keys[j])){
                             offersIdx.replace(keys[j], i);
                             offersTimes.replace(keys[j], refPlanList.get(i)._productionEnd + delay);
                         }
@@ -460,8 +455,10 @@ public class MachineAgent extends Agent {
             recievedAllComponents = true;
             if (machine.active) {
                 if (currProdElement != null) {
-                    addBehaviour(SendProduct(currProdElement));
-                    currProdElement = null;
+                  String req = currProdElement._planMessage.getRequestingAgent();
+                  int delay = GetSocketDelay(req);
+                  addBehaviour(SendProduct(currProdElement, delay));
+                  currProdElement = null;
                 }
                 for (int i = 9; i >= 0; i--) { // priority of actions
                     for (int j = 0; j < ProduceList.get(i).size(); j++) {
@@ -483,27 +480,33 @@ public class MachineAgent extends Agent {
             }
         }
     };
-
-    SimpleBehaviour SendProduct(ProduceElement product) {
-        return new SimpleBehaviour() {
+    WakerBehaviour SendProduct(ProduceElement product, int delay) {
+        return new WakerBehaviour(this, delay) {
             @Override
-            public void action() {
-                if (machine.active) {
-                    ACLMessage msg = new ACLMessage();
-                    msg.addReceiver(new AID(product._planMessage.getRequestingAgent(), AID.ISLOCALNAME));
-                    msg.setProtocol("product" + product._planMessage.getId());
-                    send(msg);
-                }
-            }
-
-            @Override
-            public boolean done() {
-                return true;
+            public void onWake() {
+                ACLMessage msg = new ACLMessage();
+                msg.addReceiver(new AID(product._planMessage.getRequestingAgent(), AID.ISLOCALNAME));
+                InformationCenter.getInstance().guiFrame.removeProduct(getLocalName(), product._planMessage.GetProductName());
+                msg.setProtocol("product"+product._planMessage.getId());
+                send(msg);
             }
         };
     }
 
-    private void AddToProduceList(ProduceElement prodElement) {
+    private int GetSocketDelay(String requestingAgent) {
+        int delay = 0;
+        int socketId = machine.socketId;
+        if (!requestingAgent.equals("SimulationAgent")) {
+            int len = requestingAgent.length();
+            requestingAgent = requestingAgent.substring(7, len);
+            int socket = InformationCenter.getInstance().machines.get(Integer.parseInt(requestingAgent)).socketId;
+            if (socket != socketId)
+                delay += InformationCenter.getInstance().socketDelay;
+        }
+        return delay;
+    }
+
+    private void AddToProduceList(ProduceElement prodElement){
         int priority = prodElement._planMessage.getPriority();
         ProduceList.get(priority).add(prodElement);
         TimeAxis = new LinkedList<TimeElement>();
